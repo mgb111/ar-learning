@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import { GLTFLoader, GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Minimal aliases to avoid pulling full WebXR TypeScript types
@@ -50,12 +49,11 @@ function setupScene() {
   container.appendChild(renderer.domElement);
 }
 
-function setupARButton() {
+async function startARSession() {
   const uiOverlay = document.getElementById('ui-overlay') as HTMLElement | null;
-  const arButtonContainer = document.getElementById('ar-button-container');
 
-  if (!('xr' in navigator)) {
-    console.warn('WebXR not supported on this browser.');
+  if (!(navigator as any).xr) {
+    console.warn('WebXR not available on this browser.');
     if (uiOverlay) {
       uiOverlay.innerHTML =
         '<p id="instruction"><b>WebXR AR not supported.</b><br/>Open on a compatible mobile browser (Chrome on Android) to use AR.</p>';
@@ -63,23 +61,52 @@ function setupARButton() {
     return;
   }
 
-  const options: XRSessionInit | any = {
-    requiredFeatures: ['hit-test'],
-  };
+  try {
+    const xr = (navigator as any).xr;
 
-  // Only request dom-overlay if we actually have the element
-  if (uiOverlay) {
-    options.optionalFeatures = ['dom-overlay'];
-    options.domOverlay = { root: uiOverlay };
+    // Optional: check support first
+    if (xr.isSessionSupported) {
+      const supported = await xr.isSessionSupported('immersive-ar');
+      if (!supported) {
+        console.warn('immersive-ar session not supported.');
+        if (uiOverlay) {
+          uiOverlay.innerHTML =
+            '<p id="instruction"><b>AR not supported.</b><br/>This device/browser does not support immersive AR.</p>';
+        }
+        return;
+      }
+    }
+
+    const sessionInit: XRSessionInit = {
+      requiredFeatures: ['hit-test', 'local-floor'],
+    } as any;
+
+    const session: any = await xr.requestSession('immersive-ar', sessionInit);
+
+    // Let three.js manage the reference space as 'local-floor'
+    (renderer.xr as any).setReferenceSpaceType('local-floor');
+    renderer.xr.setSession(session);
+
+    // Reset hit-test for this session
+    hitTestSource = null;
+    hitTestSourceRequested = false;
+
+    console.log('AR session started');
+  } catch (err) {
+    console.error('Failed to start AR session', err);
+    if (uiOverlay) {
+      uiOverlay.innerHTML =
+        '<p id="instruction"><b>Failed to start AR.</b><br/>See console for details.</p>';
+    }
   }
+}
 
-  const button = ARButton.createButton(renderer, options);
-
-  if (arButtonContainer) {
-    arButtonContainer.innerHTML = '';
-    arButtonContainer.appendChild(button);
-  } else {
-    document.body.appendChild(button);
+function setupStartButton() {
+  const startButton = document.getElementById('enter-ar');
+  if (startButton) {
+    startButton.addEventListener('click', () => {
+      startARSession();
+    });
   }
 }
 
@@ -168,10 +195,10 @@ function render(_timestamp: number, frame?: XRFrame) {
     const session = renderer.xr.getSession();
 
     if (session && !hitTestSourceRequested) {
-      session
+      (session as any)
         .requestReferenceSpace('viewer')
         .then((refSpace: any) => {
-          return session.requestHitTestSource({ space: refSpace });
+          return (session as any).requestHitTestSource({ space: refSpace });
         })
         .then((source: XRHitTestSource) => {
           hitTestSource = source;
@@ -204,7 +231,7 @@ function render(_timestamp: number, frame?: XRFrame) {
 
 function start() {
   setupScene();
-  setupARButton();
+  setupStartButton();
   loadEngineModel();
   setupReticleAndController();
   setupResizeHandling();
