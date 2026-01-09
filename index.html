@@ -114,9 +114,9 @@
 
             // 1. Load the 3D Model
             const loader = new GLTFLoader();
-            // Placeholder: A high-quality helmet (Engine models are usually heavy, start with this to test)
-            const MODEL_URL = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf';
-            
+            // Load the local radial pneumatic engine GLB model
+            const MODEL_URL = '3d_printable_radial_pneumatic_engine.glb';
+
             loader.load(MODEL_URL, (gltf) => {
                 engineModel = gltf.scene;
                 engineModel.scale.set(0.2, 0.2, 0.2); // Set initial scale
