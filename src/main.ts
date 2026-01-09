@@ -101,12 +101,12 @@ async function startARSession() {
   }
 }
 
+// We no longer rely on a manual button; AR starts automatically on load.
+// This helper is kept in case we later want a manual trigger again.
 function setupStartButton() {
   const startButton = document.getElementById('enter-ar');
   if (startButton) {
-    startButton.addEventListener('click', () => {
-      startARSession();
-    });
+    startButton.style.display = 'none';
   }
 }
 
@@ -236,6 +236,9 @@ function start() {
   setupReticleAndController();
   setupResizeHandling();
   setupTouchRotation();
+
+  // Start AR session immediately on load
+  startARSession();
 
   renderer.setAnimationLoop(render);
 }
