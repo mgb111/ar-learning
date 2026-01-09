@@ -273,6 +273,37 @@
         init();
         animate();
 
+        checkRuntimeRequirements();
+
+        async function checkRuntimeRequirements() {
+            const isSecure = window.isSecureContext;
+            const hasXR = typeof navigator !== 'undefined' && !!navigator.xr;
+
+            if (!isSecure) {
+                ui.status.textContent = 'Blocked: not HTTPS';
+                ui.body.textContent = 'WebXR AR requires a secure context. Open this site on HTTPS, or (for testing) enable Chrome flag “Insecure origins treated as secure” for this URL.';
+                return;
+            }
+
+            if (!hasXR) {
+                ui.status.textContent = 'No WebXR';
+                ui.body.textContent = 'This browser/device does not expose WebXR. Use Android Chrome with ARCore support.';
+                return;
+            }
+
+            try {
+                const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                if (!supported) {
+                    ui.status.textContent = 'AR not supported';
+                    ui.body.textContent = 'Immersive AR is not supported on this device/browser. Try Android Chrome with ARCore installed and updated.';
+                }
+            } catch (e) {
+                ui.status.textContent = 'XR check failed';
+                ui.body.textContent = 'Could not query AR support. Open DevTools console for details.';
+                console.error(e);
+            }
+        }
+
         function init() {
             container = document.createElement('div');
             document.body.appendChild(container);
@@ -300,6 +331,11 @@
                 domOverlay: { root: document.body }
             });
             document.getElementById('ar-button-container').appendChild(button);
+
+            if (!window.isSecureContext) {
+                const arWrap = document.getElementById('ar-button-container');
+                arWrap.style.display = 'none';
+            }
 
             engineRoot = new THREE.Group();
             engineRoot.visible = false;
