@@ -28,6 +28,9 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 20;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
         }
 
         #hud {
@@ -157,11 +160,23 @@
             font-size: 12px;
             color: var(--muted);
         }
+        #ar-fallback {
+            display: none;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #ddd;
+        }
     </style>
 </head>
 <body>
 
-    <div id="ar-button-container"></div>
+    <div id="ar-button-container">
+        <div id="ar-fallback">WebXR AR not available on this device/browser.</div>
+    </div>
 
     <div id="hud">
         <div id="hudTop">
@@ -282,12 +297,14 @@
             if (!isSecure) {
                 ui.status.textContent = 'Blocked: not HTTPS';
                 ui.body.textContent = 'WebXR AR requires a secure context. Open this site on HTTPS, or (for testing) enable Chrome flag “Insecure origins treated as secure” for this URL.';
+                document.getElementById('ar-fallback').style.display = 'block';
                 return;
             }
 
             if (!hasXR) {
                 ui.status.textContent = 'No WebXR';
                 ui.body.textContent = 'This browser/device does not expose WebXR. Use Android Chrome with ARCore support.';
+                document.getElementById('ar-fallback').style.display = 'block';
                 return;
             }
 
@@ -296,11 +313,13 @@
                 if (!supported) {
                     ui.status.textContent = 'AR not supported';
                     ui.body.textContent = 'Immersive AR is not supported on this device/browser. Try Android Chrome with ARCore installed and updated.';
+                    document.getElementById('ar-fallback').style.display = 'block';
                 }
             } catch (e) {
                 ui.status.textContent = 'XR check failed';
                 ui.body.textContent = 'Could not query AR support. Open DevTools console for details.';
                 console.error(e);
+                document.getElementById('ar-fallback').style.display = 'block';
             }
         }
 
@@ -332,9 +351,9 @@
             });
             document.getElementById('ar-button-container').appendChild(button);
 
-            if (!window.isSecureContext) {
-                const arWrap = document.getElementById('ar-button-container');
-                arWrap.style.display = 'none';
+            // Show fallback if AR button is not created
+            if (!button || button.style.display === 'none') {
+                document.getElementById('ar-fallback').style.display = 'block';
             }
 
             engineRoot = new THREE.Group();
