@@ -3,58 +3,597 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Majorbeam | AR Engine Lab</title>
+    <title>AR Engine Lab</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        /* Learning Overlay UI */
-        #ui-overlay {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 85%;
-            max-width: 400px;
-            background: rgba(20, 20, 20, 0.85);
-            backdrop-filter: blur(5px);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 10;
-            pointer-events: none;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        :root {
+            --panel-bg: rgba(20, 20, 20, 0.86);
+            --panel-border: rgba(255, 255, 255, 0.12);
+            --text: #ffffff;
+            --muted: rgba(255, 255, 255, 0.75);
+            --accent: #4ade80;
+            --danger: #fb7185;
         }
 
-        #instruction {
-            font-size: 15px;
+        body {
             margin: 0;
-            line-height: 1.4;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: var(--text);
         }
 
-        /* Container for the AR Button */
         #ar-button-container {
             position: absolute;
-            top: 20px;
+            top: 16px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 11;
+            z-index: 20;
+        }
+
+        #hud {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 18px;
+            width: min(520px, calc(100vw - 24px));
+            z-index: 30;
+            pointer-events: auto;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.55);
+            border-radius: 16px;
+            padding: 14px 14px 12px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #hudTop {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        #lessonTitle {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        #lessonMeta {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        #statusPill {
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--panel-border);
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        #lessonBody {
+            margin-top: 10px;
+            font-size: 14px;
+            line-height: 1.35;
+            color: var(--text);
+        }
+
+        #progressWrap {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #progressBar {
+            flex: 1;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            overflow: hidden;
+        }
+
+        #progressFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(74,222,128,1) 0%, rgba(34,197,94,1) 100%);
+        }
+
+        #progressText {
+            font-size: 12px;
+            color: var(--muted);
+            width: 58px;
+            text-align: right;
+        }
+
+        #controls {
+            margin-top: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btnRow {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            appearance: none;
+            border: 1px solid var(--panel-border);
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            width: 100%;
+        }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        button.primary {
+            border-color: rgba(74, 222, 128, 0.55);
+            background: rgba(74, 222, 128, 0.18);
+        }
+
+        button.danger {
+            border-color: rgba(251, 113, 133, 0.55);
+            background: rgba(251, 113, 133, 0.15);
+        }
+
+        #hint {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--muted);
         }
     </style>
 </head>
 <body>
 
-    <div id="ui-overlay">
-        <p id="instruction"><b>Step 1:</b> Point your camera at the floor and move it around to find a surface. Tap the ring to place the engine.</p>
+    <div id="ar-button-container"></div>
+
+    <div id="hud">
+        <div id="hudTop">
+            <div>
+                <div id="lessonTitle">Loading lesson…</div>
+                <div id="lessonMeta">AR Engine Lab</div>
+            </div>
+            <div id="statusPill">Not started</div>
+        </div>
+        <div id="lessonBody">Preparing the experience.</div>
+        <div id="progressWrap">
+            <div id="progressBar"><div id="progressFill"></div></div>
+            <div id="progressText">0/0</div>
+        </div>
+        <div id="controls">
+            <div class="btnRow">
+                <button id="prevBtn">Prev</button>
+                <button id="nextBtn" class="primary">Next</button>
+            </div>
+            <div class="btnRow">
+                <button id="toggleHotspotsBtn">Hotspots</button>
+                <button id="resetBtn" class="danger">Reset</button>
+            </div>
+        </div>
+        <div id="hint">Tip: Move the phone to find a surface. Tap the ring to place the model. Drag to rotate. Pinch to scale.</div>
     </div>
 
-    <div id="ar-button-container">
-        <button id="enter-ar" style="padding:10px 18px;border-radius:999px;border:none;background:#ffffff;color:#000;font-weight:600;cursor:pointer;">
-            Start AR
-        </button>
-    </div>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const MODEL_URL = './3d_printable_radial_pneumatic_engine.glb';
+
+        const ui = {
+            title: document.getElementById('lessonTitle'),
+            meta: document.getElementById('lessonMeta'),
+            status: document.getElementById('statusPill'),
+            body: document.getElementById('lessonBody'),
+            progressFill: document.getElementById('progressFill'),
+            progressText: document.getElementById('progressText'),
+            prevBtn: document.getElementById('prevBtn'),
+            nextBtn: document.getElementById('nextBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            toggleHotspotsBtn: document.getElementById('toggleHotspotsBtn'),
+        };
+
+        const steps = [
+            {
+                title: 'Find a surface',
+                text: 'Move your phone slowly. When you see the green ring, tap to place the engine model.',
+                requiresPlacement: false,
+                hotspots: []
+            },
+            {
+                title: 'Overall structure',
+                text: 'Rotate the engine with one finger. Identify the cylinder bank arranged radially around the center.',
+                requiresPlacement: true,
+                hotspots: [
+                    { id: 'center', label: 'Center hub', position: [0, 0.10, 0] }
+                ]
+            },
+            {
+                title: 'Air flow concept',
+                text: 'Pneumatic engines use compressed air. Follow where air would enter, distribute, and exhaust.',
+                requiresPlacement: true,
+                hotspots: [
+                    { id: 'inlet', label: 'Air inlet (edit position)', position: [0.10, 0.14, 0.08] },
+                    { id: 'exhaust', label: 'Exhaust (edit position)', position: [-0.10, 0.12, 0.06] }
+                ]
+            },
+            {
+                title: 'Try scaling',
+                text: 'Pinch to scale. Make the engine large enough to inspect details, then reset your preferred size.',
+                requiresPlacement: true,
+                hotspots: []
+            }
+        ];
+
+        let container;
+        let camera, scene, renderer;
+        let controller;
+
+        let reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+
+        let engineRoot = null;
+        let engineModel = null;
+        let isPlaced = false;
+        let isModelLoaded = false;
+
+        let stepIndex = 0;
+        let hotspotsEnabled = true;
+        const hotspotMeshes = new Map();
+
+        let lastTouchX = null;
+        let lastPinchDist = null;
+
+        init();
+        animate();
+
+        function init() {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+            const hemi = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            hemi.position.set(0.5, 1, 0.25);
+            scene.add(hemi);
+
+            const dir = new THREE.DirectionalLight(0xffffff, 2);
+            dir.position.set(3, 4, 2);
+            scene.add(dir);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            const button = ARButton.createButton(renderer, {
+                requiredFeatures: ['hit-test'],
+                optionalFeatures: ['dom-overlay'],
+                domOverlay: { root: document.body }
+            });
+            document.getElementById('ar-button-container').appendChild(button);
+
+            engineRoot = new THREE.Group();
+            engineRoot.visible = false;
+            scene.add(engineRoot);
+
+            loadModel();
+            createReticle();
+            setupInput();
+            setupUI();
+            applyStep(0);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupUI() {
+            ui.meta.textContent = 'Model: 3d_printable_radial_pneumatic_engine';
+
+            ui.prevBtn.addEventListener('click', () => goToStep(stepIndex - 1));
+            ui.nextBtn.addEventListener('click', () => goToStep(stepIndex + 1));
+            ui.resetBtn.addEventListener('click', resetPlacement);
+            ui.toggleHotspotsBtn.addEventListener('click', () => {
+                hotspotsEnabled = !hotspotsEnabled;
+                syncHotspotVisibility();
+                ui.toggleHotspotsBtn.textContent = hotspotsEnabled ? 'Hotspots' : 'Hotspots (off)';
+            });
+        }
+
+        function loadModel() {
+            ui.status.textContent = 'Loading model…';
+            const loader = new GLTFLoader();
+            loader.load(
+                MODEL_URL,
+                (gltf) => {
+                    engineModel = gltf.scene;
+                    engineModel.traverse((obj) => {
+                        if (obj.isMesh) {
+                            obj.frustumCulled = false;
+                        }
+                    });
+                    engineModel.scale.set(0.20, 0.20, 0.20);
+                    engineModel.rotation.y = Math.PI;
+                    engineRoot.add(engineModel);
+                    isModelLoaded = true;
+                    ui.status.textContent = 'Model loaded';
+                    rebuildHotspots();
+                    syncControls();
+                },
+                undefined,
+                (err) => {
+                    ui.status.textContent = 'Model failed to load';
+                    ui.body.textContent = 'Failed to load the GLB. Make sure you are serving this folder via a local server (not file://) and the model path is correct.';
+                    console.error(err);
+                }
+            );
+        }
+
+        function createReticle() {
+            reticle = new THREE.Mesh(
+                new THREE.RingGeometry(0.10, 0.13, 40).rotateX(-Math.PI / 2),
+                new THREE.MeshBasicMaterial({ color: 0x22c55e })
+            );
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+        }
+
+        function setupInput() {
+            controller = renderer.xr.getController(0);
+            controller.addEventListener('select', onSelect);
+            scene.add(controller);
+
+            window.addEventListener('touchstart', onTouchStart, { passive: false });
+            window.addEventListener('touchmove', onTouchMove, { passive: false });
+            window.addEventListener('touchend', onTouchEnd);
+            window.addEventListener('touchcancel', onTouchEnd);
+        }
+
+        function onTouchStart(e) {
+            if (!isPlaced || !engineRoot.visible) return;
+
+            if (e.touches.length === 1) {
+                lastTouchX = e.touches[0].pageX;
+            }
+            if (e.touches.length === 2) {
+                lastPinchDist = pinchDistance(e.touches[0], e.touches[1]);
+            }
+        }
+
+        function onTouchMove(e) {
+            if (!isPlaced || !engineRoot.visible) return;
+
+            if (e.touches.length === 1 && lastTouchX !== null) {
+                const x = e.touches[0].pageX;
+                const dx = x - lastTouchX;
+                engineRoot.rotation.y += dx * 0.01;
+                lastTouchX = x;
+                return;
+            }
+
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const d = pinchDistance(e.touches[0], e.touches[1]);
+                if (lastPinchDist !== null) {
+                    const ratio = d / lastPinchDist;
+                    const next = THREE.MathUtils.clamp(engineRoot.scale.x * ratio, 0.05, 1.0);
+                    engineRoot.scale.set(next, next, next);
+                }
+                lastPinchDist = d;
+            }
+        }
+
+        function onTouchEnd() {
+            lastTouchX = null;
+            lastPinchDist = null;
+        }
+
+        function pinchDistance(a, b) {
+            const dx = a.pageX - b.pageX;
+            const dy = a.pageY - b.pageY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function onSelect() {
+            if (!reticle.visible) return;
+            if (!isModelLoaded) {
+                ui.status.textContent = 'Model still loading…';
+                return;
+            }
+            if (isPlaced) return;
+
+            engineRoot.position.setFromMatrixPosition(reticle.matrix);
+            engineRoot.visible = true;
+            isPlaced = true;
+            ui.status.textContent = 'Placed';
+
+            syncControls();
+            applyStep(stepIndex);
+        }
+
+        function resetPlacement() {
+            isPlaced = false;
+            engineRoot.visible = false;
+            engineRoot.position.set(0, 0, 0);
+            engineRoot.rotation.set(0, 0, 0);
+            engineRoot.scale.set(1, 1, 1);
+            ui.status.textContent = isModelLoaded ? 'Ready to place' : 'Loading model…';
+            goToStep(0);
+        }
+
+        function goToStep(nextIndex) {
+            const clamped = Math.max(0, Math.min(steps.length - 1, nextIndex));
+            applyStep(clamped);
+        }
+
+        function applyStep(nextIndex) {
+            stepIndex = nextIndex;
+            const step = steps[stepIndex];
+
+            ui.title.textContent = step.title;
+            ui.body.textContent = step.text;
+
+            const progress = steps.length ? (stepIndex + 1) / steps.length : 0;
+            ui.progressFill.style.width = `${Math.round(progress * 100)}%`;
+            ui.progressText.textContent = `${stepIndex + 1}/${steps.length}`;
+
+            syncControls();
+            highlightStepHotspots(step);
+        }
+
+        function syncControls() {
+            const step = steps[stepIndex];
+            const needsPlacement = !!step.requiresPlacement;
+            const canNavigate = !needsPlacement || isPlaced;
+
+            ui.prevBtn.disabled = stepIndex <= 0 || !canNavigate;
+            ui.nextBtn.disabled = stepIndex >= steps.length - 1 || !canNavigate;
+            ui.toggleHotspotsBtn.disabled = !isModelLoaded;
+            ui.resetBtn.disabled = !isModelLoaded;
+
+            if (!isModelLoaded) {
+                ui.status.textContent = 'Loading model…';
+                return;
+            }
+
+            if (!isPlaced) {
+                ui.status.textContent = 'Ready to place';
+                return;
+            }
+        }
+
+        function rebuildHotspots() {
+            for (const mesh of hotspotMeshes.values()) {
+                mesh.removeFromParent();
+                mesh.geometry?.dispose?.();
+                mesh.material?.dispose?.();
+            }
+            hotspotMeshes.clear();
+
+            const unique = new Map();
+            for (const step of steps) {
+                for (const hs of (step.hotspots || [])) {
+                    if (!unique.has(hs.id)) unique.set(hs.id, hs);
+                }
+            }
+
+            const geom = new THREE.SphereGeometry(0.018, 18, 12);
+
+            for (const hs of unique.values()) {
+                const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.position.set(hs.position[0], hs.position[1], hs.position[2]);
+                mesh.userData.hotspotId = hs.id;
+                mesh.userData.label = hs.label;
+                hotspotMeshes.set(hs.id, mesh);
+                engineRoot.add(mesh);
+            }
+
+            syncHotspotVisibility();
+        }
+
+        function syncHotspotVisibility() {
+            const visible = hotspotsEnabled && isModelLoaded && engineRoot.visible;
+            for (const mesh of hotspotMeshes.values()) {
+                mesh.visible = visible;
+            }
+        }
+
+        function highlightStepHotspots(step) {
+            if (!isModelLoaded) return;
+
+            const activeIds = new Set((step.hotspots || []).map(h => h.id));
+            for (const [id, mesh] of hotspotMeshes.entries()) {
+                const isActive = activeIds.has(id);
+                mesh.material.color.setHex(isActive ? 0x4ade80 : 0x38bdf8);
+                mesh.scale.setScalar(isActive ? 1.35 : 1.0);
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
+
+        function render(timestamp, frame) {
+            if (engineRoot && engineRoot.visible) {
+                syncHotspotVisibility();
+            }
+
+            if (frame) {
+                const referenceSpace = renderer.xr.getReferenceSpace();
+                const session = renderer.xr.getSession();
+
+                if (hitTestSourceRequested === false) {
+                    session.requestReferenceSpace('viewer').then((refSpace) => {
+                        session.requestHitTestSource({ space: refSpace }).then((source) => {
+                            hitTestSource = source;
+                        });
+                    });
+
+                    session.addEventListener('end', () => {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                    });
+
+                    hitTestSourceRequested = true;
+                }
+
+                if (!isPlaced && hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    if (hitTestResults.length) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                } else {
+                    reticle.visible = false;
+                }
+            }
+
+            for (const mesh of hotspotMeshes.values()) {
+                if (!mesh.visible) continue;
+                const t = timestamp * 0.002;
+                mesh.position.y += Math.sin(t + mesh.position.x * 10) * 0.00015;
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
 </body>
 </html>
